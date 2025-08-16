@@ -1,2 +1,2 @@
-# Challenge-5---El-ping-ino-que-sab-a-demasiado.
-Construction de un sistema de logging distribuido con servicios simulados.
+# Challenge5---El-pinguino-que-sabia-demasiado.
+Construccion de un sistema de logging distribuido con servicios simulados.
