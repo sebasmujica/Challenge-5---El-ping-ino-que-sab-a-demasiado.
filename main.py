@@ -3,6 +3,8 @@ import sqlite3
 
 app = Flask(__name__)
 
+SEVERITIES = {"DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"}
+
 def iso_now():
     pass
 
@@ -111,3 +113,17 @@ def listar_logs():
         where.append("received_at <= ?")
         params.append(ra_end)
 
+#Otros filtros 
+    service = request.args.get("service")
+    severity = request.args.get("severity")
+
+    if service:
+        where.append("service = ?")
+        params.append(service)
+    if severity:
+        sev = severity.upper()
+        if sev not in SEVERITIES:
+            return jsonify({"error": f"severity invalido. Usa uno de: {', '.join(sorted(SEVERITIES))}"}),400
+        where.append("severity = ?")
+        params.append(sev)
+        
