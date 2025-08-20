@@ -71,7 +71,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
-            recibido_en TEXT NO NULL,
+            received_at TEXT NO NULL,
             service TEXT NOT NULL,
             severity TEXT NOT NULL,
             message TEXT NOT NULL,
@@ -80,7 +80,7 @@ def init_db():
         '''
 )
     indices = [
-        "CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamps)",
+        "CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp)",
         "CREATE INDEX IF NOT EXISTS idx_logs_received_at ON logs(received_at)",
         "CREATE INDEX IF NOT EXISTS idx_logs_service ON logs(service)",
         "CREATE INDEX IF NOT EXISTS idx_logs_severity ON logs(severity)"
@@ -143,14 +143,18 @@ def recibir_logs():
     try:
         for item in batch:
             ts, service, severity, mensaje = validar_log(item)
-            to_insert.append((ts,recv_time,service,mensaje,token))
+            to_insert.append((ts,recv_time,service,severity,mensaje,token))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     
     conn = get_conn()
     try:
         with conn:
-            conn.executemany()
+            conn.executemany(
+                "INSERT INTO logs (timestamp, received_at, service, severity, message, token) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                to_insert,
+            )
     finally:
         conn.close()
     return jsonify({"inserted": len(to_insert)}), 201
@@ -217,6 +221,37 @@ def listar_logs():
         where.append("severity = ?")
         params.append(sev)
 
+    limit = request.args.get("limit", default="100")
+    offset = request.args.get("offset",default="0")
+
+    try:
+        limit_i = max(1,min(int(limit), 1000))
+        offset_i = max(0,int(offset))
+    except ValueError:
+        return jsonify({"error":"limit/offset invalidos"})
+
+    where_sql = (" WHERE " + " AND ".join(where)) if where else ""
+    sql = f'''
+        SELECT id, timestamp, received_at, service, severity, message, token
+        FROM logs
+        {where_sql}
+        ORDER BY received_at DESC, id DESC
+        LIMIT ? OFFSET ?
+    '''
+
+    params_ext = params + [limit_i, offset_i]
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(sql,params_ext)
+    rows = cur.fetchall()
+    conn.close()
+    return jsonify(
+        {
+            "count": len(rows),
+            "items": [dict(r) for r in rows]
+        }
+    )
 
 if __name__ == "__main__":
     init_db()
