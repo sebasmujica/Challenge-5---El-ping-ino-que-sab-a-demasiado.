@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 import sqlite3
-from datetime import datetime, timezone,UTC
+from datetime import datetime,UTC
 from typing import Dict, Any, Tuple
 
 app = Flask(__name__)
@@ -13,7 +13,7 @@ tokens_validos = {
     "GHI789",
 }
 
-SEVERITIES = {"DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"}
+SEVERITIES = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
 def iso_now():
     # YYYY-MM-DDTHH-MM-SS+00:00 ---> YYYY-MM-DDTHH-MM-SSZ
@@ -71,7 +71,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
-            received_at TEXT NO NULL,
+            received_at TEXT NOT NULL,
             service TEXT NOT NULL,
             severity TEXT NOT NULL,
             message TEXT NOT NULL,
@@ -118,12 +118,12 @@ def health():
 
 
 #Ruta /log con metodo GET
-@app.post("/log")
+@app.post("/logs")
 def recibir_logs():
     
     token = val_token()
     if not token:
-        return jsonify({"error": "inavalid token"}), 400
+        return jsonify({"error": "Quien sos, bro?"}), 400
     
     try:
         data = request.get_json(force = True, silent= False)
@@ -174,7 +174,7 @@ def listar_logs():
     if ts_start:
         try:
             ts_start = parse_iso(ts_start)
-            pass
+
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         where.append("timestamp >= ?")
@@ -189,16 +189,16 @@ def listar_logs():
         params.append(ts_end)
 
 #Filtro por rango (received_at)
-    ra_star = request.args.get("received_at_start")
+    ra_start = request.args.get("received_at_start")
     ra_end = request.args.get("received_at_end")
 
-    if ra_star:
+    if ra_start:
         try:
-            ra_star = parse_iso(ra_star)
+            ra_start = parse_iso(ra_start)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         where.append("received_at >= ?")
-        params.append(ra_star)
+        params.append(ra_start)
     if ra_end:
         try:
             ra_end = parse_iso(ra_end)
